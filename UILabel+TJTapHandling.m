@@ -30,11 +30,13 @@ static char *const kURLHandlersKey = "_tj_urlHandlers";
 - (void)_didTap:(UITapGestureRecognizer *)recognizer
 {
     const NSInteger index = [self indexOfTappedCharacterAtPoint:[recognizer locationInView:self]];
-    NSRange range;
-    NSURL *const url = [self.attributedText attribute:NSLinkAttributeName atIndex:index effectiveRange:&range];
-    if (url) {
-        for (id<TJLabelURLHandler> handler in objc_getAssociatedObject(self, kURLHandlersKey)) {
-            [handler label:self didTapURL:url inRange:range];
+    if (index != NSNotFound) {
+        NSRange range;
+        NSURL *const url = [self.attributedText attribute:NSLinkAttributeName atIndex:index effectiveRange:&range];
+        if (url) {
+            for (id<TJLabelURLHandler> handler in objc_getAssociatedObject(self, kURLHandlersKey)) {
+                [handler label:self didTapURL:url inRange:range];
+            }
         }
     }
 }
@@ -60,6 +62,7 @@ static char *const kTextStorageKey = "_tj_textStorage";
         NSAssert([textStorage isEqual:attributedText], @"%s caching failing", __PRETTY_FUNCTION__);
         objc_setAssociatedObject(attributedText, kTextStorageKey, textStorage, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         layoutManager = [NSLayoutManager new];
+        layoutManager.usesFontLeading = NO;
         textContainer = [[NSTextContainer alloc] initWithSize:self.bounds.size];
         textContainer.lineFragmentPadding = 0.0;
         [layoutManager addTextContainer:textContainer];
@@ -73,7 +76,12 @@ static char *const kTextStorageKey = "_tj_textStorage";
     
     const CGPoint textContainerOffset = CGPointMake((self.bounds.size.width - textBoundingBox.size.width) * 0.5 - textBoundingBox.origin.x, (self.bounds.size.height - textBoundingBox.size.height) * 0.5 - textBoundingBox.origin.y);
     const CGPoint locationOfTouchInTextContainer = CGPointMake(point.x - textContainerOffset.x, point.y - textContainerOffset.y);
-    NSInteger index = [layoutManager characterIndexForPoint:locationOfTouchInTextContainer inTextContainer:textContainer fractionOfDistanceBetweenInsertionPoints:nil];
+    CGFloat frac;
+    NSInteger index = [layoutManager characterIndexForPoint:locationOfTouchInTextContainer inTextContainer:textContainer fractionOfDistanceBetweenInsertionPoints:&frac];
+    
+    if (frac == 1.0) {
+        return NSNotFound;
+    }
     
     return index;
 }
