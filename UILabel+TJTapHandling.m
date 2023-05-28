@@ -70,6 +70,26 @@ static char *const kURLHandlersKey = "_tj_urlHandlers";
         self.userInteractionEnabled = YES; // Labels default to userInteractionEnabled = NO
         [self addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_didTap:)]];
         [self addGestureRecognizer:[[TJTouchesBeganGestureRecognizer alloc] initWithTarget:self action:@selector(_touchesChanged:)]];
+        
+#if 0
+        // Useful for debugging tappable regions.
+        // Does NOT include hit outsets.
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            for (int x = 0; x < self.bounds.size.width; x++) {
+                for (int y = 0; y < self.bounds.size.height; y++) {
+                    CGPoint p = CGPointMake(x, y);
+                    NSInteger index = [self indexOfTappedCharacterAtPoint:p];
+                    UIView *v = [[UIView alloc] initWithFrame:(CGRect){p, CGSizeMake(1, 1)}];
+                    [self addSubview:v];
+                    if (index != NSNotFound && [self.attributedText attribute:NSLinkAttributeName atIndex:index effectiveRange:nil]) {
+                        v.backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.5];
+                    } else {
+                        v.backgroundColor = [[UIColor redColor] colorWithAlphaComponent:0.5];
+                    }
+                }
+            }
+        });
+#endif
     }
     [urlHandlers addObject:handler];
 }
