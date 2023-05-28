@@ -11,6 +11,50 @@
 
 static const CGFloat kTJTapHandlingDefaultTolerance = 10.0;
 
+// Courtesy of https://christianselig.com/2023/05/instant-pan-gesture-interactions/
+@interface TJTouchesBeganGestureRecognizer : UIGestureRecognizer
+
+@end
+
+__attribute__((objc_direct_members))
+@implementation TJTouchesBeganGestureRecognizer
+
+- (BOOL)canPreventGestureRecognizer:(UIGestureRecognizer *)preventedGestureRecognizer
+{
+    return NO;
+}
+
+- (BOOL)canBePreventedByGestureRecognizer:(UIGestureRecognizer *)preventingGestureRecognizer
+{
+    return NO;
+}
+
+- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
+{
+    [super touchesBegan:touches withEvent:event];
+    self.state = UIGestureRecognizerStateBegan;
+}
+
+- (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
+{
+    [super touchesMoved:touches withEvent:event];
+    self.state = UIGestureRecognizerStateEnded;
+}
+
+- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
+{
+    [super touchesCancelled:touches withEvent:event];
+    self.state = UIGestureRecognizerStateCancelled;
+}
+
+- (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
+{
+    [super touchesEnded:touches withEvent:event];
+    self.state = UIGestureRecognizerStateEnded;
+}
+
+@end
+
 @implementation UILabel (TJTapHandling)
 
 static char *const kURLHandlersKey = "_tj_urlHandlers";
@@ -25,6 +69,7 @@ static char *const kURLHandlersKey = "_tj_urlHandlers";
         
         self.userInteractionEnabled = YES; // Labels default to userInteractionEnabled = NO
         [self addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_didTap:)]];
+        [self addGestureRecognizer:[[TJTouchesBeganGestureRecognizer alloc] initWithTarget:self action:@selector(_touchesChanged:)]];
     }
     [urlHandlers addObject:handler];
 }
@@ -36,6 +81,19 @@ static char *const kURLHandlersKey = "_tj_urlHandlers";
             [handler label:self didTapURL:url inRange:range];
         }
     }];
+}
+
+- (void)_touchesChanged:(UIGestureRecognizer *)recognizer
+{
+    NSMutableAttributedString *string = [self.attributedText mutableCopy];
+    if (recognizer.state == UIGestureRecognizerStateBegan) {
+        [self _linkAtPoint:[recognizer locationInView:self] tolerance:kTJTapHandlingDefaultTolerance handler:^(NSURL *url, NSRange range) {
+            [string addAttribute:NSBackgroundColorAttributeName value:[UIColor secondarySystemFillColor] range:range];
+        }];
+    } else {
+        [string removeAttribute:NSBackgroundColorAttributeName range:NSMakeRange(0, string.length)];
+    }
+    self.attributedText = string;
 }
 
 - (void)_linkAtPoint:(const CGPoint)point tolerance:(CGFloat)tolerance handler:(NS_NOESCAPE void (^)(NSURL *url, NSRange range))handler
