@@ -9,6 +9,8 @@
 
 #import <objc/runtime.h>
 
+static const CGFloat kTJTapHandlingDefaultTolerance = 10.0;
+
 @implementation UILabel (TJTapHandling)
 
 static char *const kURLHandlersKey = "_tj_urlHandlers";
@@ -29,13 +31,27 @@ static char *const kURLHandlersKey = "_tj_urlHandlers";
 
 - (void)_didTap:(UITapGestureRecognizer *)recognizer
 {
-    const NSInteger index = [self indexOfTappedCharacterAtPoint:[recognizer locationInView:self]];
-    if (index != NSNotFound) {
-        NSRange range;
-        NSURL *const url = [self.attributedText attribute:NSLinkAttributeName atIndex:index effectiveRange:&range];
-        if (url) {
-            for (id<TJLabelURLHandler> handler in objc_getAssociatedObject(self, kURLHandlersKey)) {
-                [handler label:self didTapURL:url inRange:range];
+    [self _linkAtPoint:[recognizer locationInView:self] tolerance:kTJTapHandlingDefaultTolerance handler:^(NSURL *url, NSRange range) {
+        for (id<TJLabelURLHandler> handler in objc_getAssociatedObject(self, kURLHandlersKey)) {
+            [handler label:self didTapURL:url inRange:range];
+        }
+    }];
+}
+
+- (void)_linkAtPoint:(const CGPoint)point tolerance:(CGFloat)tolerance handler:(NS_NOESCAPE void (^)(NSURL *url, NSRange range))handler
+{
+    NSArray *const tolerances = tolerance > 0 ? @[@0, @(-tolerance),  @(tolerance)] : @[@0];
+    for (NSNumber *xOffset in tolerances) {
+        for (NSNumber *yOffset in tolerances) {
+            const CGPoint adjustedPoint = CGPointMake(point.x + xOffset.doubleValue, point.y + yOffset.doubleValue);
+            const NSInteger index = [self indexOfTappedCharacterAtPoint:adjustedPoint];
+            if (index != NSNotFound) {
+                NSRange range;
+                NSURL *const url = [self.attributedText attribute:NSLinkAttributeName atIndex:index effectiveRange:&range];
+                if (url) {
+                    handler(url, range);
+                    return;
+                }
             }
         }
     }
