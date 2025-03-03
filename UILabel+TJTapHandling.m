@@ -12,7 +12,7 @@
 static const CGFloat kTJTapHandlingDefaultTolerance = 10.0;
 
 // Courtesy of https://christianselig.com/2023/05/instant-pan-gesture-interactions/
-@interface TJTouchesBeganGestureRecognizer : UIGestureRecognizer
+static @interface TJTouchesBeganGestureRecognizer : UIGestureRecognizer
 
 @end
 
